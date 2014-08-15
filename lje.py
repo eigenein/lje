@@ -53,22 +53,23 @@ def transaction(blog):
         cursor.close()
 
 
+def get_option_row(value):
+    "Gets option row by value."
+    if isinstance(value, int):
+        return value, None, None, None
+    if isinstance(value, float):
+        return None, value, None, None
+    if isinstance(value, str):
+        return None, None, value, None
+    if isinstance(value, bytes):
+        return None, None, None, value
+    raise ValueError(value)
+
+
 def insert_options(cursor, options):
     "Inserts options into blog options table."
     for name, value in options:
-        integer_value = real_value = text_value = blob_value = None
-        if isinstance(value, int):
-            integer_value = value
-        elif isinstance(value, float):
-            real_value = value
-        elif isinstance(value, str):
-            text_value = value
-        elif isinstance(value, bytes):
-            blob_value = value
-        else:
-            raise ValueError(value)
-        cursor.execute("insert into options values (?, ?, ?, ?, ?)", (
-            name, integer_value, real_value, text_value, blob_value))
+        cursor.execute("insert into options values (?, ?, ?, ?, ?)", (name, ) + get_option_row(value))
 
 
 # Init command.
@@ -98,8 +99,16 @@ def init(blog, name, email, title, url):
 
 @click.command(short_help="Compose new article.")
 @editor_option
-def compose(editor):
-    pass
+@click.option("--key", default=None, help="Post key. Example: my-first-post.", metavar="<key>")
+@click.option("--title", help="Post title.", metavar="<title>", prompt=True, required=True)
+@click.option("--tag", help="Post tag.", metavar="<tag>", multiple=True)
+def compose(editor, key, title, tag):
+    key = key or urlify(title)
+
+
+def urlify(title):
+    "Gets post key by title."
+    return title.lower().replace(" ", "-")
 
 
 # Edit command.
