@@ -6,7 +6,10 @@ import sys; sys.dont_write_bytecode = True
 import collections
 import contextlib
 import logging
+import os
+import pathlib
 import sqlite3
+import tempfile
 
 import click
 
@@ -104,6 +107,13 @@ def init(blog, name, email, title, url):
 @click.option("--tag", help="Post tag.", metavar="<tag>", multiple=True)
 def compose(editor, key, title, tag):
     key = key or urlify(title)
+    fd, path = tempfile.mkstemp(prefix="lje-{}-".format(key), suffix=".txt", text=True)
+    os.system("{0} \"{1}\"".format(editor, path))
+    try:
+        with os.fdopen(fd, "rt", encoding="utf-8") as fp:
+            text = fp.read()
+    finally:
+        pathlib.Path(path).unlink()
 
 
 def urlify(title):
