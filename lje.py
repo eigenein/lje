@@ -79,7 +79,8 @@ def insert_options(cursor, options):
 @click.option("--name", help="Your name.", metavar="<name>", prompt=True, required=True)
 @click.option("--email", help="Your email.", metavar="<email>", prompt=True, required=True)
 @click.option("--title", help="Blog title.", metavar="<title>", prompt=True, required=True)
-def init(blog, name, email, title):
+@click.option("--url", help="Blog URL.", metavar="<url>", prompt=True, required=True)
+def init(blog, name, email, title, url):
     with transaction(blog) as cursor:
         cursor.execute("""create table options (
             name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob
@@ -88,6 +89,7 @@ def init(blog, name, email, title):
             ("user.name", name),
             ("user.email", email),
             ("blog.title", title),
+            ("blog.url", url),
         ])
 
 
