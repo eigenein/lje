@@ -68,13 +68,24 @@ class CursorWrapper:
                 text_ text not null
             )""")
 
-    def insert_option(self, name, value):
-        "Inserts option into options table."
-        self.cursor.execute("insert into options values (?, ?, ?, ?, ?)", self.make_option_row(name, value))
+    def upsert_option(self, name, value):
+        "Inserts or updates option."
+        logging.info("Setting option `%s` to `%s`.", name, value)
+        row = self.make_option_row(name, value)
+        try:
+            self.cursor.execute("""
+                insert into options (integer_value, real_value, text_value, blob_value, name)
+                values (?, ?, ?, ?, ?)
+            """, row)
+        except sqlite3.IntegrityError:
+            self.cursor.execute("""
+                update options
+                set integer_value = ?, real_value = ?, text_value = ?, blob_value = ? where name = ?
+            """, row)
 
     def make_option_row(self, name, value):
         "Gets option row by value."
-        return (name, as_(value, int), as_(value, float), as_(value, str), as_(value, bytes))
+        return (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
 
     def insert_post(self, key, timestamp, title, text):
         "Insert new post."
@@ -131,12 +142,6 @@ def get_text(editor, key, text=""):
 def get_timestamp():
     "Gets UTC timestamp."
     return int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())
-
-
-def check_not_existing(database):
-    "Checks that database does not already exist."
-    if pathlib.Path(database).exists():
-        raise click.BadParameter("database already exists", param="database")
 
 
 # Common options, arguments and types.
@@ -208,11 +213,10 @@ def build(database):
 def init(database, name, email, title, url):
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         cursor.initialize_database()
-        cursor.insert_option("author.email", email)
-        cursor.insert_option("author.name", name)
-        cursor.insert_option("blog.page.size", 10)
-        cursor.insert_option("blog.title", title)
-        cursor.insert_option("blog.url", url)
+        cursor.upsert_option("author.email", email)
+        cursor.upsert_option("author.name", name)
+        cursor.upsert_option("blog.title", title)
+        cursor.upsert_option("blog.url", url)
 
 
 # Compose command.
@@ -321,16 +325,14 @@ def import_tumblr(database, hostname):
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         cursor.initialize_database()
 
+        response = tumblr_get(session, "info", hostname)
+
+        cursor.upsert_option("author.name", response["blog"]["name"])
+        cursor.upsert_option("blog.title", response["blog"]["title"])
+        cursor.upsert_option("blog.url", response["blog"]["url"])
+
         for offset in itertools.count(0, 20):
-            response = session.get("http://api.tumblr.com/v2/blog/{}/posts/text".format(hostname), params={
-                "api_key": "x4OpEVw3OfxdUXA46aCXh3M308SMRKCA6LklBnSzMNvKOCXMFD",
-                "filter": "raw",
-                "offset": offset,
-                "limit": 20,
-            })
-            response.raise_for_status()
-            response = response.json()
-            response = response["response"]
+            response = tumblr_get(session, "posts/text", hostname, filter="raw", offset=offset, limit=20)
             if offset >= response["total_posts"]:
                 break
             for post in response["posts"]:
@@ -339,6 +341,17 @@ def import_tumblr(database, hostname):
                 logging.info("Imported: %s.", post["slug"])
 
     logging.info("Imported posts: %d.", imported_posts)
+
+
+def tumblr_get(session, method, hostname, **params):
+    "Makes request to Tumblr API."
+
+    params["api_key"] = "x4OpEVw3OfxdUXA46aCXh3M308SMRKCA6LklBnSzMNvKOCXMFD"
+    url = "http://api.tumblr.com/v2/blog/{}/{}".format(hostname, method)
+    response = session.get(url, params=params)
+    response.raise_for_status()
+    response = response.json()
+    return response["response"]
 
 
 # Version command.
