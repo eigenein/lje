@@ -6,6 +6,7 @@ import sys; sys.dont_write_bytecode = True
 import collections
 import contextlib
 import datetime
+import itertools
 import logging
 import os
 import pathlib
@@ -13,6 +14,7 @@ import sqlite3
 import tempfile
 
 import click
+import requests
 
 __version__ = "0.1a"
 
@@ -70,13 +72,27 @@ class CursorWrapper:
         "Inserts option into options table."
         self.cursor.execute("insert into options values (?, ?, ?, ?, ?)", self.make_option_row(name, value))
 
-    def insert_post(self, key, title, text):
-        "Insert new post."
-        self.cursor.execute("insert into posts values (?, ?, ?, ?)", (key, get_timestamp(), title, text))
-
     def make_option_row(self, name, value):
         "Gets option row by value."
         return (name, as_(value, int), as_(value, float), as_(value, str), as_(value, bytes))
+
+    def insert_post(self, key, timestamp, title, text):
+        "Insert new post."
+        self.cursor.execute("insert into posts values (?, ?, ?, ?)", (key, get_timestamp(), title, text))
+
+    def update_post(self, key, timestamp, title, text):
+        "Updates existing post."
+        self.cursor.execute(
+            "update posts set timestamp = ?, title = ?, text = ? where key = ?", (
+            timestamp, title, text, key,
+        ))
+
+    def upsert_post(self, key, timestamp, title, text):
+        "Inserts new post or updates if exists."
+        try:
+            self.insert_post(key, timestamp, title, text)
+        except sqlite3.IntegrityError:
+            self.update_post(key, timestamp, title, text)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not exc_type:
@@ -117,6 +133,12 @@ def get_timestamp():
     return int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())
 
 
+def check_not_existing(database):
+    "Checks that database does not already exist."
+    if pathlib.Path(database).exists():
+        raise click.BadParameter("database already exists", param="database")
+
+
 # Common options, arguments and types.
 # ------------------------------------------------------------------------------
 
@@ -138,7 +160,17 @@ class AliasedGroup(click.Group):
 class SQLiteType(click.ParamType):
     name = "sqlite"
 
+    def __init__(self, exists):
+        super()
+        self.exists = exists
+
     def convert(self, value, param, ctx):
+        if pathlib.Path(value).exists():
+            if not self.exists:
+                raise click.UsageError("database already exists")
+        else:
+            if self.exists:
+                raise click.UsageError("existing database is expected")
         return sqlite3.connect(value)
 
 
@@ -151,14 +183,15 @@ editor_option = click.option(
 )
 
 
-database_argument = click.argument("database", metavar="<database>", type=SQLiteType())
+existing_database_argument = click.argument("database", metavar="<database>", type=SQLiteType(exists=True))
+new_database_argument = click.argument("database", metavar="<database>", type=SQLiteType(exists=False))
 
 
 # Build command.
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Builds blog.")
-@database_argument
+@existing_database_argument
 def build(database):
     pass
 
@@ -167,7 +200,7 @@ def build(database):
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Initialize new blog.")
-@database_argument
+@new_database_argument
 @click.option("--name", help="Your name.", metavar="<name>", prompt=True, required=True)
 @click.option("--email", help="Your email.", metavar="<email>", prompt=True, required=True)
 @click.option("--title", help="Blog title.", metavar="<title>", prompt=True, required=True)
@@ -186,7 +219,7 @@ def init(database, name, email, title, url):
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Compose new article.")
-@database_argument
+@existing_database_argument
 @editor_option
 @click.option("--key", default=None, help="Post key. Example: my-first-post.", metavar="<key>")
 @click.option("--title", help="Post title.", metavar="<title>", prompt=True, required=True)
@@ -195,7 +228,7 @@ def compose(database, editor, key, title, tag):
     key = key or urlify(title)
     text = get_text(editor, key)
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
-        cursor.insert_post(key, title, text)
+        cursor.insert_post(key, get_timestamp(), title, text)
 
 
 # Edit command.
@@ -260,6 +293,9 @@ def list_options():
 
 @click.group("import", short_help="Import blog.")
 def import_():
+    """
+    Imports another source into a new Љ blog.
+    """
     pass
 
 
@@ -267,8 +303,42 @@ def import_():
 # ------------------------------------------------------------------------------
 
 @click.command("tumblr", short_help="Import from tumblr.")
-def import_tumblr():
-    pass
+@new_database_argument
+@click.argument("hostname", metavar="<hostname>")
+def import_tumblr(database, hostname):
+    """
+    Imports blog from Tumblr.
+
+    \b
+    Example:
+    \b
+        lje.py import tumblr myblog.db eigenein.tumblr.com
+    """
+
+    session = requests.Session()
+    imported_posts = 0
+
+    with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
+        cursor.initialize_database()
+
+        for offset in itertools.count(0, 20):
+            response = session.get("http://api.tumblr.com/v2/blog/{}/posts/text".format(hostname), params={
+                "api_key": "x4OpEVw3OfxdUXA46aCXh3M308SMRKCA6LklBnSzMNvKOCXMFD",
+                "filter": "raw",
+                "offset": offset,
+                "limit": 20,
+            })
+            response.raise_for_status()
+            response = response.json()
+            response = response["response"]
+            if offset >= response["total_posts"]:
+                break
+            for post in response["posts"]:
+                cursor.upsert_post(post["slug"], post["timestamp"], post["title"], post["body"])
+                imported_posts += 1
+                logging.info("Imported: %s.", post["slug"])
+
+    logging.info("Imported posts: %d.", imported_posts)
 
 
 # Version command.
@@ -288,11 +358,7 @@ def main():
     """
     Љ is a small and easy static blog generator.
     """
-    logging.basicConfig(
-        format="%(message)s",
-        level=logging.INFO,
-        stream=sys.stderr,
-    )
+    logging.basicConfig(format="%(message)s", level=logging.INFO, stream=sys.stderr)
 
 
 if __name__ == "__main__":
