@@ -35,66 +35,83 @@ editor_option = click.option(
 )
 
 
-blog_argument = click.argument("blog", metavar="<blog db>", type=SQLiteType())
+database_argument = click.argument("database", metavar="<blog db>", type=SQLiteType())
 
 
-# Blog database functions.
+# Database functions.
 # ------------------------------------------------------------------------------
 
-@contextlib.contextmanager
-def transaction(blog):
-    "Yields a cursor with error handling."
-    cursor = blog.cursor()
-    try:
-        yield cursor
-    except:
-        blog.rollback()
-        raise
-    else:
-        blog.commit()
-    finally:
-        cursor.close()
+class ConnectionWrapper:
+    "Database connection wrapper."
+
+    def __init__(self, connection):
+        self.connection = connection
+
+    def __enter__(self):
+        return self
+
+    def cursor(self):
+        "Gets database cursor wrapper."
+
+        return CursorWrapper(self.connection.cursor())
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.connection.close()
 
 
-def get_option_row(value):
-    "Gets option row by value."
-    if isinstance(value, int):
-        return value, None, None, None
-    if isinstance(value, float):
-        return None, value, None, None
-    if isinstance(value, str):
-        return None, None, value, None
-    if isinstance(value, bytes):
-        return None, None, None, value
-    raise ValueError(value)
+class CursorWrapper:
+    "Database cursor wrapper class."
 
+    def __init__(self, cursor):
+        self.cursor = cursor
 
-def insert_options(cursor, options):
-    "Inserts options into blog options table."
-    for name, value in options:
-        cursor.execute("insert into options values (?, ?, ?, ?, ?)", (name, ) + get_option_row(value))
+    def __enter__(self):
+        return self
+
+    def initialize_database(self):
+        "Initializes empty database."
+
+        self.cursor.execute("""create table options (
+            name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob
+        )""")
+
+    def insert_option(self, name, value):
+        "Inserts option into options table."
+
+        self.cursor.execute("insert into options values (?, ?, ?, ?, ?)", (name, ) + self.make_option_row(value))
+
+    def make_option_row(self, value):
+        "Gets option row by value."
+
+        return (self.as_(value, int), self.as_(value, float), self.as_(value, str), self.as_(value, bytes))
+
+    def as_(self, value, type):
+        return value if isinstance(value, type) else None
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if not exc_type:
+            self.cursor.connection.commit()
+        else:
+            self.cursor.connection.rollback()
+        self.cursor.connection.close()
 
 
 # Init command.
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Initialize new blog.")
-@blog_argument
+@database_argument
 @click.option("--name", help="Your name.", metavar="<name>", prompt=True, required=True)
 @click.option("--email", help="Your email.", metavar="<email>", prompt=True, required=True)
 @click.option("--title", help="Blog title.", metavar="<title>", prompt=True, required=True)
 @click.option("--url", help="Blog URL.", metavar="<url>", prompt=True, required=True)
-def init(blog, name, email, title, url):
-    with transaction(blog) as cursor:
-        cursor.execute("""create table options (
-            name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob
-        )""")
-        insert_options(cursor, [
-            ("user.name", name),
-            ("user.email", email),
-            ("blog.title", title),
-            ("blog.url", url),
-        ])
+def init(database, name, email, title, url):
+    with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
+        cursor.initialize_database()
+        cursor.insert_option("user.name", name)
+        cursor.insert_option("user.email", email)
+        cursor.insert_option("blog.title", title)
+        cursor.insert_option("blog.url", url)
 
 
 # Compose command.
