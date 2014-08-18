@@ -86,14 +86,29 @@ class CursorWrapper:
     def initialize_database(self):
         "Initializes empty database."
 
-        self.cursor.execute("""create table options (
-            name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob
-        )""")
+        self.cursor.execute("""
+            create table options (
+                name text not null primary key,
+                integer_value integer,
+                real_value real,
+                text_value text,
+                blob_value blob
+            )""")
+        self.cursor.execute("""
+            create table posts (
+                key text not null primary key,
+                timestamp integer not null,
+                title text null,
+                text_ text not null
+            )""")
 
     def insert_option(self, name, value):
         "Inserts option into options table."
 
         self.cursor.execute("insert into options values (?, ?, ?, ?, ?)", (name, ) + self.make_option_row(value))
+
+    def insert_post(self):
+        pass
 
     def make_option_row(self, value):
         "Gets option row by value."
@@ -109,6 +124,15 @@ class CursorWrapper:
         else:
             self.cursor.connection.rollback()
         self.cursor.connection.close()
+
+
+# Build command.
+# ------------------------------------------------------------------------------
+
+@click.command(short_help="Builds blog.")
+@database_argument
+def build(database):
+    pass
 
 
 # Init command.
@@ -238,6 +262,7 @@ if __name__ == "__main__":
     options.add_command(get_option)
     options.add_command(set_option)
     options.add_command(list_options)
+    main.add_command(build)
     main.add_command(init)
     main.add_command(compose)
     main.add_command(edit)
