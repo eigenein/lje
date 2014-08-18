@@ -313,6 +313,8 @@ def import_tumblr(database, hostname):
     """
     Imports blog from Tumblr.
 
+    At the moment text posts are imported only.
+
     \b
     Example:
     \b
