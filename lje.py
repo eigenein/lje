@@ -175,8 +175,9 @@ def build(database):
 def init(database, name, email, title, url):
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         cursor.initialize_database()
-        cursor.insert_option("user.name", name)
-        cursor.insert_option("user.email", email)
+        cursor.insert_option("author.email", email)
+        cursor.insert_option("author.name", name)
+        cursor.insert_option("blog.page.size", 10)
         cursor.insert_option("blog.title", title)
         cursor.insert_option("blog.url", url)
 
