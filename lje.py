@@ -5,6 +5,7 @@ import sys; sys.dont_write_bytecode = True
 
 import collections
 import contextlib
+import datetime
 import logging
 import os
 import pathlib
@@ -14,43 +15,6 @@ import tempfile
 import click
 
 __version__ = "0.1a"
-
-
-# Common options, arguments and types.
-# ------------------------------------------------------------------------------
-
-class AliasedGroup(click.Group):
-
-    def get_command(self, ctx, name):
-        command = click.Group.get_command(self, ctx, name)
-        if command is not None:
-            return command
-        matches = [command for command in self.list_commands(ctx) if command.startswith(name)]
-        if not matches:
-            return None
-        if len(matches) == 1:
-            return click.Group.get_command(self, ctx, matches[0])
-        ctx.fail("`{0}` is not a command. Did you mean one of these? {1}".format(
-            name, ", ".join(matches)))
-
-
-class SQLiteType(click.ParamType):
-    name = "sqlite"
-
-    def convert(self, value, param, ctx):
-        return sqlite3.connect(value)
-
-
-editor_option = click.option(
-    "-e", "--editor",
-    default="env editor",
-    help="Editor command.",
-    metavar="<editor>",
-    show_default=True,
-)
-
-
-database_argument = click.argument("database", metavar="<database>", type=SQLiteType())
 
 
 # Database functions.
@@ -104,19 +68,15 @@ class CursorWrapper:
 
     def insert_option(self, name, value):
         "Inserts option into options table."
+        self.cursor.execute("insert into options values (?, ?, ?, ?, ?)", self.make_option_row(name, value))
 
-        self.cursor.execute("insert into options values (?, ?, ?, ?, ?)", (name, ) + self.make_option_row(value))
+    def insert_post(self, key, title, text):
+        "Insert new post."
+        self.cursor.execute("insert into posts values (?, ?, ?, ?)", (key, get_timestamp(), title, text))
 
-    def insert_post(self):
-        pass
-
-    def make_option_row(self, value):
+    def make_option_row(self, name, value):
         "Gets option row by value."
-
-        return (self.as_(value, int), self.as_(value, float), self.as_(value, str), self.as_(value, bytes))
-
-    def as_(self, value, type):
-        return value if isinstance(value, type) else None
+        return (name, as_(value, int), as_(value, float), as_(value, str), as_(value, bytes))
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not exc_type:
@@ -124,6 +84,74 @@ class CursorWrapper:
         else:
             self.cursor.connection.rollback()
         self.cursor.connection.close()
+
+
+# Utilities.
+# ------------------------------------------------------------------------------
+
+def as_(value, type):
+    return value if isinstance(value, type) else None
+
+
+def urlify(title):
+    "Gets post key by title."
+    return title.lower().replace(" ", "-")
+
+
+def get_text(editor, key, text=""):
+    "Execute editor and read user input."
+
+    fd, path = tempfile.mkstemp(prefix="lje-{}-".format(key), suffix=".txt", text=True)
+    try:
+        with os.fdopen(fd, "wt", encoding="utf-8") as fp:
+            fp.write(text)
+        os.system("{0} \"{1}\"".format(editor, path))
+        with open(path, "rt", encoding="utf-8") as fp:
+            return fp.read()
+    finally:
+        pathlib.Path(path).unlink()
+
+
+def get_timestamp():
+    "Gets UTC timestamp."
+    return int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())
+
+
+# Common options, arguments and types.
+# ------------------------------------------------------------------------------
+
+class AliasedGroup(click.Group):
+
+    def get_command(self, ctx, name):
+        command = click.Group.get_command(self, ctx, name)
+        if command is not None:
+            return command
+        matches = [command for command in self.list_commands(ctx) if command.startswith(name)]
+        if not matches:
+            return None
+        if len(matches) == 1:
+            return click.Group.get_command(self, ctx, matches[0])
+        ctx.fail("`{0}` is not a command. Did you mean one of these? {1}".format(
+            name, ", ".join(matches)))
+
+
+class SQLiteType(click.ParamType):
+    name = "sqlite"
+
+    def convert(self, value, param, ctx):
+        return sqlite3.connect(value)
+
+
+editor_option = click.option(
+    "-e", "--editor",
+    default="env editor",
+    help="Editor command.",
+    metavar="<editor>",
+    show_default=True,
+)
+
+
+database_argument = click.argument("database", metavar="<database>", type=SQLiteType())
 
 
 # Build command.
@@ -157,24 +185,16 @@ def init(database, name, email, title, url):
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Compose new article.")
+@database_argument
 @editor_option
 @click.option("--key", default=None, help="Post key. Example: my-first-post.", metavar="<key>")
 @click.option("--title", help="Post title.", metavar="<title>", prompt=True, required=True)
 @click.option("--tag", help="Post tag.", metavar="<tag>", multiple=True)
-def compose(editor, key, title, tag):
+def compose(database, editor, key, title, tag):
     key = key or urlify(title)
-    fd, path = tempfile.mkstemp(prefix="lje-{}-".format(key), suffix=".txt", text=True)
-    os.system("{0} \"{1}\"".format(editor, path))
-    try:
-        with os.fdopen(fd, "rt", encoding="utf-8") as fp:
-            text = fp.read()
-    finally:
-        pathlib.Path(path).unlink()
-
-
-def urlify(title):
-    "Gets post key by title."
-    return title.lower().replace(" ", "-")
+    text = get_text(editor, key)
+    with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
+        cursor.insert_post(key, title, text)
 
 
 # Edit command.
