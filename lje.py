@@ -19,6 +19,21 @@ __version__ = "0.1a"
 # Common options, arguments and types.
 # ------------------------------------------------------------------------------
 
+class AliasedGroup(click.Group):
+
+    def get_command(self, ctx, name):
+        command = click.Group.get_command(self, ctx, name)
+        if command is not None:
+            return command
+        matches = [command for command in self.list_commands(ctx) if command.startswith(name)]
+        if not matches:
+            return None
+        if len(matches) == 1:
+            return click.Group.get_command(self, ctx, matches[0])
+        ctx.fail("`{0}` is not a command. Did you mean one of these? {1}".format(
+            name, ", ".join(matches)))
+
+
 class SQLiteType(click.ParamType):
     name = "sqlite"
 
@@ -35,7 +50,7 @@ editor_option = click.option(
 )
 
 
-database_argument = click.argument("database", metavar="<blog db>", type=SQLiteType())
+database_argument = click.argument("database", metavar="<database>", type=SQLiteType())
 
 
 # Database functions.
@@ -207,7 +222,7 @@ def version():
 # Entry point.
 # ------------------------------------------------------------------------------
 
-@click.group()
+@click.group(cls=AliasedGroup)
 def main():
     """
     Љ is a small and easy static blog generator.
