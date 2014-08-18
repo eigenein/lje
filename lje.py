@@ -22,6 +22,9 @@ __version__ = "0.1a"
 # Database functions.
 # ------------------------------------------------------------------------------
 
+Post = collections.namedtuple("Post", ["key", "timestamp", "title", "text"])
+
+
 class ConnectionWrapper:
     "Database connection wrapper."
 
@@ -116,9 +119,6 @@ class CursorWrapper:
         self.cursor.connection.close()
 
 
-Post = collections.namedtuple("Post", ["key", "timestamp", "title", "text"])
-
-
 # Utilities.
 # ------------------------------------------------------------------------------
 
@@ -203,8 +203,39 @@ new_database_argument = click.argument("database", metavar="<database>", type=SQ
 
 @click.command(short_help="Build blog.")
 @existing_database_argument
-def build(database):
-    pass
+@click.argument("path", metavar="<path>")
+def build(database, path):
+    path = pathlib.Path(path)
+    path.mkdir(parents=True)
+
+    with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
+        BlogBuilder(cursor, path).build()
+
+
+class BlogBuilder:
+    "Builds blog."
+
+    def __init__(self, cursor, path):
+        self.cursor = cursor
+        self.path = path
+
+    def build(self):
+        "Builds entire blog."
+        pass
+
+    def build_post(self, post):
+        pass
+
+    def build_index(self):
+        pass
+
+    def get_post_groups(self, post):
+        "Gets post groups."
+
+        dt = datetime.datetime.utcfromtimestamp(post.timestamp)
+        yield []
+        yield [dt.strftime("%Y")]
+        yield [dt.strftime("%Y", dt.strftime("%m")]
 
 
 # Init command.
