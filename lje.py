@@ -87,23 +87,26 @@ class CursorWrapper:
         "Gets option row by value."
         return (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
 
-    def insert_post(self, key, timestamp, title, text):
+    def insert_post(self, post):
         "Insert new post."
-        self.cursor.execute("insert into posts values (?, ?, ?, ?)", (key, get_timestamp(), title, text))
+        self.cursor.execute(
+            "insert into posts values (?, ?, ?, ?)", (
+            post.key, post.timestamp, post.title, post.text,
+        ))
 
-    def update_post(self, key, timestamp, title, text):
+    def update_post(self, post):
         "Updates existing post."
         self.cursor.execute(
             "update posts set timestamp = ?, title = ?, text = ? where key = ?", (
-            timestamp, title, text, key,
+            post.timestamp, post.title, post.text, post.key,
         ))
 
-    def upsert_post(self, key, timestamp, title, text):
+    def upsert_post(self, post):
         "Inserts new post or updates if exists."
         try:
-            self.insert_post(key, timestamp, title, text)
+            self.insert_post(post)
         except sqlite3.IntegrityError:
-            self.update_post(key, timestamp, title, text)
+            self.update_post(post)
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not exc_type:
@@ -111,6 +114,9 @@ class CursorWrapper:
         else:
             self.cursor.connection.rollback()
         self.cursor.connection.close()
+
+
+Post = collections.namedtuple("Post", ["key", "timestamp", "title", "text"])
 
 
 # Utilities.
@@ -195,7 +201,7 @@ new_database_argument = click.argument("database", metavar="<database>", type=SQ
 # Build command.
 # ------------------------------------------------------------------------------
 
-@click.command(short_help="Builds blog.")
+@click.command(short_help="Build blog.")
 @existing_database_argument
 def build(database):
     pass
@@ -222,7 +228,7 @@ def init(database, name, email, title, url):
 # Compose command.
 # ------------------------------------------------------------------------------
 
-@click.command(short_help="Compose new article.")
+@click.command(short_help="Compose new post.")
 @existing_database_argument
 @editor_option
 @click.option("--key", default=None, help="Post key. Example: my-first-post.", metavar="<key>")
@@ -232,13 +238,13 @@ def compose(database, editor, key, title, tag):
     key = key or urlify(title)
     text = get_text(editor, key)
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
-        cursor.insert_post(key, get_timestamp(), title, text)
+        cursor.insert_post(Post(key, get_timestamp(), title, text))
 
 
 # Edit command.
 # ------------------------------------------------------------------------------
 
-@click.command(short_help="Edit existing article.")
+@click.command(short_help="Edit existing post.")
 @editor_option
 def edit(editor):
     pass
@@ -257,6 +263,13 @@ def publish():
 
 @click.command(short_help="Unpublish post.")
 def unpublish():
+    pass
+
+# List posts command.
+# ------------------------------------------------------------------------------
+
+@click.command("list", short_help="List posts.")
+def list_posts():
     pass
 
 
@@ -338,7 +351,7 @@ def import_tumblr(database, hostname):
             if offset >= response["total_posts"]:
                 break
             for post in response["posts"]:
-                cursor.upsert_post(post["slug"], post["timestamp"], post["title"], post["body"])
+                cursor.upsert_post(Post(post["slug"], post["timestamp"], post["title"], post["body"]))
                 imported_posts += 1
                 logging.info("Imported: %s.", post["slug"])
 
@@ -381,13 +394,14 @@ if __name__ == "__main__":
     options.add_command(set_option)
     options.add_command(list_options)
     import_.add_command(import_tumblr)
+    main.add_command(options)
+    main.add_command(import_)
     main.add_command(build)
     main.add_command(init)
     main.add_command(compose)
     main.add_command(edit)
     main.add_command(publish)
     main.add_command(unpublish)
-    main.add_command(options)
-    main.add_command(import_)
+    main.add_command(list_posts)
     main.add_command(version)
     main()
