@@ -217,7 +217,7 @@ def publish():
 # Unpublish command.
 # ------------------------------------------------------------------------------
 
-@click.command(short_help="Unpublish article.")
+@click.command(short_help="Unpublish post.")
 def unpublish():
     pass
 
@@ -254,6 +254,22 @@ def list_options():
     pass
 
 
+# Import command group.
+# ------------------------------------------------------------------------------
+
+@click.group("import", short_help="Import blog.")
+def import_():
+    pass
+
+
+# Import from Tumblr.
+# ------------------------------------------------------------------------------
+
+@click.command("tumblr", short_help="Import from tumblr.")
+def import_tumblr():
+    pass
+
+
 # Version command.
 # ------------------------------------------------------------------------------
 
@@ -282,6 +298,7 @@ if __name__ == "__main__":
     options.add_command(get_option)
     options.add_command(set_option)
     options.add_command(list_options)
+    import_.add_command(import_tumblr)
     main.add_command(build)
     main.add_command(init)
     main.add_command(compose)
@@ -289,5 +306,6 @@ if __name__ == "__main__":
     main.add_command(publish)
     main.add_command(unpublish)
     main.add_command(options)
+    main.add_command(import_)
     main.add_command(version)
     main()
