@@ -209,24 +209,37 @@ class SQLiteType(click.ParamType):
         return sqlite3.connect(value)
 
 
-editor_option = click.option(
-    "-e", "--editor",
-    default="env editor",
-    help="Editor command.",
-    metavar="<editor>",
-    show_default=True,
-)
+class CommonOptions:
+    "Common command options."
+
+    editor = click.option(
+        "-e", "--editor",
+        default="env editor",
+        help="Editor command.",
+        metavar="<editor>",
+        show_default=True,
+    )
+
+    key = click.option(
+        "--key",
+        default=None,
+        help="Post key. Example: my-first-post.",
+        metavar="<key>",
+    )
 
 
-existing_database_argument = click.argument("database", metavar="<database>", type=SQLiteType(exists=True))
-new_database_argument = click.argument("database", metavar="<database>", type=SQLiteType(exists=False))
+class CommonArguments:
+    "Common command arguments."
+
+    existing_database = click.argument("database", metavar="<database>", type=SQLiteType(exists=True))
+    new_database = click.argument("database", metavar="<database>", type=SQLiteType(exists=False))
 
 
 # Build command.
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Build blog.")
-@existing_database_argument
+@CommonArguments.existing_database
 @click.argument("path", metavar="<path>")
 def build(database, path):
     path = pathlib.Path(path)
@@ -323,7 +336,7 @@ class BlogBuilder:
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Initialize new blog.")
-@new_database_argument
+@CommonArguments.new_database
 @click.option("--name", help="Your name.", metavar="<name>", prompt=True, required=True)
 @click.option("--email", help="Your email.", metavar="<email>", prompt=True, required=True)
 @click.option("--title", help="Blog title.", metavar="<title>", prompt=True, required=True)
@@ -341,9 +354,9 @@ def init(database, name, email, title, url):
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Compose new post.")
-@existing_database_argument
-@editor_option
-@click.option("--key", default=None, help="Post key. Example: my-first-post.", metavar="<key>")
+@CommonArguments.existing_database
+@CommonOptions.editor
+@CommonOptions.key
 @click.option("--title", help="Post title.", metavar="<title>", prompt=True, required=True)
 @click.option("--tag", help="Post tag.", metavar="<tag>", multiple=True)
 def compose(database, editor, key, title, tag):
@@ -357,7 +370,7 @@ def compose(database, editor, key, title, tag):
 # ------------------------------------------------------------------------------
 
 @click.command(short_help="Edit existing post.")
-@editor_option
+@CommonOptions.editor
 def edit(editor):
     pass
 
@@ -432,7 +445,7 @@ def import_():
 # ------------------------------------------------------------------------------
 
 @click.command("tumblr", short_help="Import from tumblr.")
-@new_database_argument
+@CommonArguments.new_database
 @click.argument("hostname", metavar="<hostname>")
 def import_tumblr(database, hostname):
     """
