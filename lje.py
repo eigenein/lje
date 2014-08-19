@@ -14,6 +14,8 @@ import sqlite3
 import tempfile
 
 import click
+# import jinja2
+# import markdown
 import requests
 
 __version__ = "0.1a"
@@ -105,16 +107,16 @@ class CursorWrapper:
     def insert_post(self, post):
         "Insert new post."
         self.cursor.execute(
-            "insert into posts values (?, ?, ?, ?)", (
-            post.key, post.timestamp, post.title, post.text,
-        ))
+            "insert into posts values (?, ?, ?, ?)",
+            (post.key, post.timestamp, post.title, post.text),
+        )
 
     def update_post(self, post):
         "Updates existing post."
         self.cursor.execute(
-            "update posts set timestamp = ?, title = ?, text = ? where key = ?", (
-            post.timestamp, post.title, post.text, post.key,
-        ))
+            "update posts set timestamp = ?, title = ?, text = ? where key = ?",
+            (post.timestamp, post.title, post.text, post.key),
+        )
 
     def upsert_post(self, post):
         "Inserts new post or updates if exists."
@@ -377,6 +379,7 @@ def publish():
 @click.command(short_help="Unpublish post.")
 def unpublish():
     pass
+
 
 # List posts command.
 # ------------------------------------------------------------------------------
