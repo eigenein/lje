@@ -73,8 +73,10 @@ class CursorWrapper:
 
     def upsert_option(self, name, value):
         "Inserts or updates option."
+        if value and name == "blog.url":
+            value = value.rstrip("/")
         logging.info("Setting option `%s` to `%s`.", name, value)
-        option_row = self.make_option_row(name, value)
+        option_row = (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
         try:
             self.cursor.execute("""
                 insert into options (integer_value, real_value, text_value, blob_value, name)
@@ -86,10 +88,6 @@ class CursorWrapper:
                 set integer_value = ?, real_value = ?, text_value = ?, blob_value = ? where name = ?
             """, option_row)
 
-    def make_option_row(self, name, value):
-        "Gets option row by value."
-        return (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
-
     def get_option(self, name):
         "Gets option value."
         self.cursor.execute("""
@@ -99,6 +97,11 @@ class CursorWrapper:
         """, (name, ))
         row = self.cursor.fetchone()
         return row[0]
+
+    def get_options(self):
+        "Gets all options."
+        self.cursor.execute("select name, coalesce(integer_value, real_value, text_value, blob_value) from options")
+        return dict(self.cursor.fetchall())
 
     def insert_post(self, post):
         "Insert new post."
@@ -247,6 +250,7 @@ class BlogBuilder:
         self.page_size = self.cursor.get_option("blog.page_size")
         package_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
         self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(package_path)))
+        self.context = self.make_context()
         self.build_index(self.index, self.path)
         self.build_posts()
 
@@ -270,7 +274,7 @@ class BlogBuilder:
 
     def build_index_page(self, path, posts):
         logging.info("Building index page `%s`…", path)
-        self.render(path, "index.html")
+        self.render(path, "index.html", posts=posts)
 
     def build_posts(self):
         "Builds single post pages."
@@ -283,14 +287,20 @@ class BlogBuilder:
 
         path = self.path / post.key / "index.html"
         logging.info("Building post page `%s`…", path)
-        self.render(path, "post.html")
+        self.render(path, "post.html", post=post)
+
+    def make_context(self):
+        "Makes template context."
+        options = self.cursor.get_options()
+        for key, value in list(options.items()):
+            options[key.replace(".", "_")] = value
+        return {"index": self.index, "options": options}
 
     def render(self, path, template_name, **context):
         "Renders template to the specified path."
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
-        context = dict({"index": self.index}, **context)
-        body = self.env.get_template(template_name).render(context)
+        body = self.env.get_template(template_name).render(self.context)
         with open(str(path), "wt", encoding="utf-8") as fp:
             fp.write(body)
 
