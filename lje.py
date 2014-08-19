@@ -67,6 +67,7 @@ class CursorWrapper:
         self.upsert_option("author.email", None)
         self.upsert_option("author.name", None)
         self.upsert_option("blog.page_size", 10)
+        self.upsert_option("blog.theme", "lje")
         self.upsert_option("blog.title", None)
         self.upsert_option("blog.url", None)
 
@@ -244,6 +245,8 @@ class BlogBuilder:
 
         self.initialize_index()
         self.page_size = self.cursor.get_option("blog.page_size")
+        package_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
+        self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(package_path)))
         self.build_index(self.index, self.path)
         self.build_posts()
 
@@ -267,7 +270,7 @@ class BlogBuilder:
 
     def build_index_page(self, path, posts):
         logging.info("Building index page `%s`…", path)
-        pass  # TODO
+        self.render(path, "index.html")
 
     def build_posts(self):
         "Builds single post pages."
@@ -280,7 +283,16 @@ class BlogBuilder:
 
         path = self.path / post.key / "index.html"
         logging.info("Building post page `%s`…", path)
-        pass  # TODO
+        self.render(path, "post.html")
+
+    def render(self, path, template_name, **context):
+        "Renders template to the specified path."
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True)
+        context = dict({"index": self.index}, **context)
+        body = self.env.get_template(template_name).render(context)
+        with open(str(path), "wt", encoding="utf-8") as fp:
+            fp.write(body)
 
 
 class Index:
