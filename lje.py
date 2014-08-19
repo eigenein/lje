@@ -170,8 +170,9 @@ def get_timestamp():
     return int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())
 
 
-def get_tree():
-    return collections.namedtuple(get_tree)
+def paginate(items, page_size):
+    "Splits items into list of pages."
+    return [items[i:(i + page_size)] for i in range(0, len(items), page_size)]
 
 
 # Common options, arguments and types.
@@ -242,94 +243,81 @@ class CommonArguments:
 @CommonArguments.existing_database
 @click.argument("path", metavar="<path>")
 def build(database, path):
-    path = pathlib.Path(path)
-    if not path.exists():
-        path.mkdir(parents=True)
-
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
-        BlogBuilder(cursor, path).build()
+        BlogBuilder(cursor, pathlib.Path(path)).build()
 
 
 class BlogBuilder:
     "Builds blog."
-
-     # TODO: /blog/my-first-post/index.html
-     # TODO: /posts/2014/index.html
-     # TODO: /posts/2014/08/index.html
-     # TODO: /posts/tags/octocat/index.html
 
     def __init__(self, cursor, path):
         self.cursor = cursor
         self.path = path
 
     def build(self):
-        "Builds entire blog."
+        "Build blog."
+
+        self.initialize_index()
         self.page_size = self.cursor.get_option("blog.page_size", 10)
+        self.build_index(self.index, self.path)
+        self.build_posts()
+
+    def initialize_index(self):
+        logging.info("Initializing index…")
+        self.index = Index()
         posts = self.cursor.get_posts()
-
-        self.build_index(posts)
-
         for post in posts:
-            self.build_post(post)
+            self.index.append(post)
 
-    def build_post(self, post):
-        "Builds single post page."
-        post_path = self.path / "blog" / post.key / "index.html"
-        logging.info("Building post `%s`…", post_path)
-        pass  # TODO: build post page
-
-    def build_index(self, posts):
-        "Builds index pages."
-
-        by_year, by_year_month = self.group_posts(posts)
-
-        # TODO: refactor this to build in a general way… I don't know how to do this at the moment…
-        self.build_home_index(posts)
-        self.build_by_year_index(by_year)
-        self.build_by_year_month_index(by_year_month)
-
-    def group_posts(self, posts):
-        "Groups posts before building index pages."
-        by_year = collections.defaultdict(list)
-        by_year_month = collections.defaultdict(lambda: collections.defaultdict(list))
-        for post in posts:
-            timestamp = datetime.datetime.utcfromtimestamp(post.timestamp)
-            by_year[timestamp.year].append(post)
-            by_year_month[timestamp.year][timestamp.month].append(post)
-        return by_year, by_year_month
-
-    def build_home_index(self, posts):
-        "Builds home pages index."
-        self.build_group(self.path, posts)
-
-    def build_by_year_index(self, by_year):
-        "Builds year index pages."
-
-        for year, posts in by_year.items():
-            year = str(year)
-            logging.info("Building %s year index pages…", year)
-            self.build_group(self.path / "posts" / year, posts)
-
-    def build_by_year_month_index(self, by_year_month):
-        "Builds month index pages."
-
-        for year, by_month in by_year_month.items():
-            year = str(year)
-            for month, posts in by_month.items():
-                month = "{:02}".format(month)
-                logging.info("Building %s-%s month index pages…", year, month)
-                self.build_group(self.path / "posts" / year / month, posts)
-
-    def build_group(self, path, posts):
-        "Builds group of index pages."
-
-        pages = [posts[i:(i + self.page_size)] for i in range(0, len(posts), self.page_size)]
+    def build_index(self, entry, path):
+        logging.info("Building index pages in `%s`…", path)
+        # Build pages at the current level.
+        pages = paginate(entry.posts, self.page_size)
         for page, posts in enumerate(pages, 1):
-            page_path = path if page == 1 else path / str(page)
-            page_path = page_path / "index.html"
+            page_path = path / str(page) if page != 1 else path
+            self.build_index_page(page_path / "index.html", posts)
+        # Recursively build child index pages.
+        for segment, child in entry.children.items():
+            self.build_index(child, path / str(segment))
 
-            logging.info("Building `%s`: %d posts…", page_path, len(posts))
-            pass  # TODO: build index page
+    def build_index_page(self, path, posts):
+        logging.info("Building index page `%s`…", path)
+        pass  # TODO
+
+    def build_posts(self):
+        "Builds single post pages."
+
+        for post in self.index.posts:
+            self.build_post_page(post)
+
+    def build_post_page(self, post):
+        "Builds post page."
+
+        path = self.path / post.key / "index.html"
+        logging.info("Building post page `%s`…", path)
+        pass  # TODO
+
+
+class Index:
+    "Pages index."
+
+    def __init__(self):
+        self.posts = []
+        self.children = collections.defaultdict(Index)
+
+    def append(self, post):
+        "Appends post to index."
+        for key in self.get_keys(post):
+            entry = self
+            for segment in key:
+                entry = entry.children[segment]
+            entry.posts.append(post)
+
+    def get_keys(self, post):
+        timestamp = datetime.datetime.utcfromtimestamp(post.timestamp)
+        yield [timestamp.strftime("%Y")]
+        yield [timestamp.strftime("%Y"), timestamp.strftime("%m")]
+        yield []
 
 
 # Init command.
