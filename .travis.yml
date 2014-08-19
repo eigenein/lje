@@ -7,5 +7,5 @@ before_script:
   - "pep8 --ignore E501,E702 lje.py"
 script:
   - "python lje.py init --name Name --email name@example.org --title Title --url http://example.org new.db"
-  - "python lje.py import tubmlr eigenein.tumblr.com imported.db"
+  - "python lje.py import tumblr eigenein.tumblr.com imported.db"
   - "python lje.py build imported.db build"
