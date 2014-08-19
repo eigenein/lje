@@ -10,6 +10,7 @@ import itertools
 import logging
 import os
 import pathlib
+import shutil
 import sqlite3
 import tempfile
 
@@ -257,11 +258,12 @@ class BlogBuilder:
 
         self.initialize_index()
         self.page_size = self.cursor.get_option("blog.page_size")
-        package_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
-        self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(package_path)))
+        self.theme_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
+        self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(self.theme_path)))
         self.context = self.make_context()
         self.build_index(self.index, self.path)
         self.build_posts()
+        self.copy_static_files()
 
     def initialize_index(self):
         logging.info("Initializing index…")
@@ -312,6 +314,12 @@ class BlogBuilder:
         body = self.env.get_template(template_name).render(self.context)
         with open(str(path), "wt", encoding="utf-8") as fp:
             fp.write(body)
+
+    def copy_static_files(self):
+        "Copies static files to build path."
+        logging.info("Copying static files…")
+        shutil.copy(str(self.theme_path / "theme.css"), str(self.path / "theme.css"))
+        pass  # TODO: dump favicons
 
 
 class Index:
