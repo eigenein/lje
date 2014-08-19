@@ -66,6 +66,8 @@ class CursorWrapper:
         # Insert default option values.
         self.upsert_option("author.email", None)
         self.upsert_option("author.name", None)
+        self.upsert_option("blog.favicon.ico", None)
+        self.upsert_option("blog.favicon.png", None)
         self.upsert_option("blog.page_size", 10)
         self.upsert_option("blog.theme", "lje")
         self.upsert_option("blog.title", None)
@@ -75,7 +77,7 @@ class CursorWrapper:
         "Inserts or updates option."
         if value and name == "blog.url":
             value = value.rstrip("/")
-        logging.info("Setting option `%s` to %r.", name, value)
+        logging.info("Setting option `%s` to %s.", name, format_option_value(value))
         option_row = (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
         try:
             self.cursor.execute("""
@@ -174,6 +176,13 @@ def get_timestamp():
 def paginate(items, page_size):
     "Splits items into list of pages."
     return [items[i:(i + page_size)] for i in range(0, len(items), page_size)]
+
+
+def format_option_value(value):
+    if not isinstance(value, bytes):
+        return repr(value)
+    else:
+        return "<{0} bytes>".format(len(value))
 
 
 # Common options, arguments and types.
@@ -419,9 +428,11 @@ def get_option():
 @click.option("--integer", "integer_value", help="Integer value.", metavar="<integer>", type=int)
 @click.option("--real", "real_value", help="Real value.", metavar="<real>", type=float)
 @click.option("--string", "text_value", help="Text value.", metavar="<string>", type=str)
-def set_option(database, name, integer_value, real_value, text_value):
+@click.option("--binary", "blob_value", help="Binary value.", metavar="<file>", type=click.File("rb"))
+def set_option(database, name, integer_value, real_value, text_value, blob_value):
     """
-    Sets option value to either integer, real or text value.
+    Sets option value to either integer, real, text or binary value.
+    If no value is specified then the value is set to empty.
 
     \b
     Examples:
@@ -431,8 +442,8 @@ def set_option(database, name, integer_value, real_value, text_value):
     """
 
     value = integer_value or real_value or text_value
-    if value is None:
-        raise click.BadParameter("specify either integer, real or text value")
+    if value is None and blob_value:
+        value = blob_value.read()
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         cursor.upsert_option(name, value)
 
@@ -455,7 +466,7 @@ def list_options(database):
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         options = cursor.get_options()
     for name, value in sorted(options.items()):
-        print("{0} = {1!r}".format(name, value))
+        print("{0} = {1}".format(name, format_option_value(value)))
 
 
 # Import command group.
