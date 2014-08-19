@@ -70,6 +70,7 @@ class CursorWrapper:
                 title text null,
                 text_ text not null
             )""")
+        self.cursor.execute("create index ix_posts_timestamp on posts (timestamp)")
 
     def upsert_option(self, name, value):
         "Inserts or updates option."
@@ -89,6 +90,16 @@ class CursorWrapper:
     def make_option_row(self, name, value):
         "Gets option row by value."
         return (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
+
+    def get_option(self, name, default_value=None):
+        "Gets option value."
+        self.cursor.execute("""
+            select coalesce(integer_value, real_value, text_value, blob_value)
+            from options
+            where name = ?
+        """, (name, ))
+        row = self.cursor.fetchone()
+        return row[0] if row else default_value
 
     def insert_post(self, post):
         "Insert new post."
@@ -110,6 +121,14 @@ class CursorWrapper:
             self.insert_post(post)
         except sqlite3.IntegrityError:
             self.update_post(post)
+
+    def get_posts(self):
+        "Gets all posts."
+        self.cursor.execute("""
+            select key, timestamp, title, text_ from posts
+            order by timestamp desc
+        """)
+        return [Post(*row) for row in self.cursor.fetchall()]
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not exc_type:
@@ -148,6 +167,10 @@ def get_text(editor, key, text=""):
 def get_timestamp():
     "Gets UTC timestamp."
     return int((datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds())
+
+
+def get_tree():
+    return collections.namedtuple(get_tree)
 
 
 # Common options, arguments and types.
@@ -206,10 +229,14 @@ new_database_argument = click.argument("database", metavar="<database>", type=SQ
 @click.argument("path", metavar="<path>")
 def build(database, path):
     path = pathlib.Path(path)
-    path.mkdir(parents=True)
+    if not path.exists():
+        path.mkdir(parents=True)
 
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         BlogBuilder(cursor, path).build()
+
+
+BlogIndex = collections.namedtuple("BlogIndex", ["posts", "by_date"])
 
 
 class BlogBuilder:
@@ -221,21 +248,65 @@ class BlogBuilder:
 
     def build(self):
         "Builds entire blog."
-        pass
+        self.page_size = self.cursor.get_option("blog.page_size", 10)
+        self.build_index()
 
     def build_post(self, post):
-        pass
+        "Builds single post page."
+        pass  # TODO: build post page
 
     def build_index(self):
-        pass
+        "Builds index pages."
 
-    def get_post_groups(self, post):
-        "Gets post groups."
+        posts = self.cursor.get_posts()
+        by_year, by_year_month = self.group_posts(posts)
 
-        dt = datetime.datetime.utcfromtimestamp(post.timestamp)
-        yield []
-        yield [dt.strftime("%Y")]
-        yield [dt.strftime("%Y", dt.strftime("%m")]
+        # TODO: refactor this to build in a general way… I don't know how to do this at the moment…
+        self.build_home_index(posts)
+        self.build_by_year_index(by_year)
+        self.build_by_year_month_index(by_year_month)
+
+    def group_posts(self, posts):
+        "Groups posts before building index pages."
+        by_year = collections.defaultdict(list)
+        by_year_month = collections.defaultdict(lambda: collections.defaultdict(list))
+        for post in posts:
+            timestamp = datetime.datetime.utcfromtimestamp(post.timestamp)
+            by_year[timestamp.year].append(post)
+            by_year_month[timestamp.year][timestamp.month].append(post)
+        return by_year, by_year_month
+
+    def build_home_index(self, posts):
+        "Builds home pages index."
+        self.build_group(self.path, posts)
+
+    def build_by_year_index(self, by_year):
+        "Builds year index pages."
+
+        for year, posts in by_year.items():
+            year = str(year)
+            logging.info("Building %s year index pages…", year)
+            self.build_group(self.path / "posts" / year, posts)
+
+    def build_by_year_month_index(self, by_year_month):
+        "Builds month index pages."
+
+        for year, by_month in by_year_month.items():
+            year = str(year)
+            for month, posts in by_month.items():
+                month = "{:02}".format(month)
+                logging.info("Building %s-%s month index pages…", year, month)
+                self.build_group(self.path / "posts" / year / month, posts)
+
+    def build_group(self, path, posts):
+        "Builds group of index pages."
+
+        pages = [posts[i:(i + self.page_size)] for i in range(0, len(posts), self.page_size)]
+        for page, posts in enumerate(pages, 1):
+            page_path = path if page == 1 else path / str(page)
+            page_path = page_path / "index.html"
+            logging.info("Building `%s`: %d posts…", page_path, len(posts))
+            pass  # TODO: build index page
 
 
 # Init command.
