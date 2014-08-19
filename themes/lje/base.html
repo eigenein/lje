@@ -8,8 +8,13 @@
     {% if options.blog_favicon_ico %}<link rel="shortcut icon" href="{{ options.blog_url }}/favicon.ico" sizes="32x32" type="image/vnd.microsoft.icon">{% endif %}
     {% if options.blog_favicon_png %}<link rel="icon" href="{{ options.blog_url }}/favicon.png" sizes="16x16" type="image/png">{% endif %}
     <link rel="stylesheet" href="{{ options.blog_url }}/theme.css">
+    <link href="http://fonts.googleapis.com/css?family=PT+Sans:400,700&subset=latin,cyrillic" rel="stylesheet">
+    <link href="http://fonts.googleapis.com/css?family=PT+Mono&subset=latin,cyrillic" rel="stylesheet">
   </head>
   <body>
+    <header class="navbar">
+      <h1><a href="{{ options.blog_url }}">{{ options.blog_title }}</a></h1>
+    </header>
     <div class="body-inner">
       {% block body %}{% endblock %}
     </div>

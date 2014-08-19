@@ -260,6 +260,7 @@ class BlogBuilder:
         self.page_size = self.cursor.get_option("blog.page_size")
         self.theme_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
         self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(self.theme_path)))
+        self.env.filters["markdown"] = markdown.markdown
         self.context = self.make_context()
         self.build_index(self.index, self.path)
         self.build_posts()

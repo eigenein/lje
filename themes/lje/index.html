@@ -3,8 +3,8 @@
 {% block body %}
 {% for post in posts %}
 <article>
-  <h2>{{ post.title }}</h2>
-  {{ post.text }}
+  <h2><a href="{{ options.blog_url }}/{{ post.key }}">{{ post.title }}</a></h2>
+  {{ post.text|markdown }}
 </article>
 {% endfor %}
 {% endblock %}

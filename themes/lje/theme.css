@@ -52,7 +52,98 @@ table {
  * Pavel Perestoronin (c) 2014
  */
 
+body {
+    font: 16px/20px "PT Sans", sans-serif;
+    color: #333;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+h2 {
+    font-size: 24px;
+    margin: 32px 0 16px 0;
+    font-weight: bold;
+}
+
+a {
+    text-decoration: none;
+}
+
+h2 a {
+    color: #333;
+    font-weight: bold;
+}
+
+h2 a:hover {
+    color: black;
+}
+
+code {
+    font-family: "PT Mono", "Consolas", "Lucida Console", monospace;
+    background: #fafafa;
+    padding: 0 4px;
+}
+
+pre {
+    font-size: 14px;
+    line-height: 24px;
+    margin: 16px 0;
+    background: #fafafa;
+    padding: 8px;
+}
+
+pre code {
+    padding: 0;
+}
+
+h3 {
+    font-size: 18px;
+    font-weight: bold;
+    margin: 16px 0 8px 0;
+}
+
+body {
+    padding-top: 48px;
+}
+
+p a {
+    color: #333;
+    border-bottom: 1px dashed black;
+}
+
+p a:hover {
+    color: #d00;
+}
+
 .body-inner {
     margin: 0 auto;
     width: 960px;
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 48px;
+    z-index: 1000;
+    background: #fafafa;
+    border-bottom: 1px solid #ccc;
+    padding: 0 24px;
+}
+
+.navbar h1 {
+    font-size: 24px;
+    line-height: 48px;
+    display: inline-block;
+}
+
+.navbar h1 a {
+    color: #333;
+}
+
+.navbar h1 a:hover {
+    color: black;
 }
