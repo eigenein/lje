@@ -14,8 +14,8 @@ import sqlite3
 import tempfile
 
 import click
-# import jinja2
-# import markdown
+import jinja2
+import markdown
 import requests
 
 __version__ = "0.1a"
@@ -210,20 +210,8 @@ class SQLiteType(click.ParamType):
 class CommonOptions:
     "Common command options."
 
-    editor = click.option(
-        "-e", "--editor",
-        default="env editor",
-        help="Editor command.",
-        metavar="<editor>",
-        show_default=True,
-    )
-
-    key = click.option(
-        "--key",
-        default=None,
-        help="Post key. Example: my-first-post.",
-        metavar="<key>",
-    )
+    editor = click.option("-e", "--editor", default="env editor", help="Editor command.", metavar="<editor>", show_default=True)
+    key = click.option("--key", default=None, help="Post key. Example: my-first-post.", metavar="<key>")
 
 
 class CommonArguments:
