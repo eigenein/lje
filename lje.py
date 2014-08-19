@@ -63,12 +63,13 @@ class CursorWrapper:
                 text_value text,
                 blob_value blob
             )""")
+        # TODO: draft, type
         self.cursor.execute("""
             create table posts (
                 key text not null primary key,
                 timestamp integer not null,
                 title text null,
-                text_ text not null
+                text text not null
             )""")
         self.cursor.execute("create index ix_posts_timestamp on posts (timestamp)")
 
@@ -125,7 +126,7 @@ class CursorWrapper:
     def get_posts(self):
         "Gets all posts."
         self.cursor.execute("""
-            select key, timestamp, title, text_ from posts
+            select key, timestamp, title, text from posts
             order by timestamp desc
         """)
         return [Post(*row) for row in self.cursor.fetchall()]
