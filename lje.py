@@ -99,7 +99,7 @@ class CursorWrapper:
             where name = ?
         """, (name, ))
         row = self.cursor.fetchone()
-        return row[0]
+        return row[0] if row else None
 
     def get_options(self):
         "Gets all options."
@@ -289,13 +289,11 @@ class BlogBuilder:
 
     def build_posts(self):
         "Builds single post pages."
-
         for post in self.index.posts:
             self.build_post_page(post)
 
     def build_post_page(self, post):
         "Builds post page."
-
         path = self.path / post.key / "index.html"
         logging.info("Building post page `%s`…", path)
         self.render(path, "post.html", post=post)
@@ -319,7 +317,16 @@ class BlogBuilder:
         "Copies static files to build path."
         logging.info("Copying static files…")
         shutil.copy(str(self.theme_path / "theme.css"), str(self.path / "theme.css"))
-        pass  # TODO: dump favicons
+        self.dump_option("blog.favicon.ico", self.path / "favicon.ico")
+        self.dump_option("blog.favicon.png", self.path / "favicon.png")
+
+    def dump_option(self, name, path):
+        "Dumps binary option into file."
+        value = self.cursor.get_option(name)
+        if value:
+            logging.info("Writing `%s`…", path)
+            with path.open("wb") as fp:
+                fp.write(value)
 
 
 class Index:
