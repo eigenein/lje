@@ -57,44 +57,39 @@ class CursorWrapper:
     def initialize_database(self):
         "Initializes empty database."
 
-        self.cursor.execute("""
-            create table options (
-                name text not null primary key,
-                integer_value integer,
-                real_value real,
-                text_value text,
-                blob_value blob
-            )""")
+        self.cursor.execute("""create table options (
+            name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob)""")
         # TODO: draft, type
-        self.cursor.execute("""
-            create table posts (
-                key text not null primary key,
-                timestamp integer not null,
-                title text null,
-                text text not null
-            )""")
+        self.cursor.execute("""create table posts (
+            key text not null primary key, timestamp integer not null, title text null, text text not null)""")
         self.cursor.execute("create index ix_posts_timestamp on posts (timestamp)")
+        # Insert default option values.
+        self.upsert_option("author.email", None)
+        self.upsert_option("author.name", None)
+        self.upsert_option("blog.page_size", 10)
+        self.upsert_option("blog.title", None)
+        self.upsert_option("blog.url", None)
 
     def upsert_option(self, name, value):
         "Inserts or updates option."
         logging.info("Setting option `%s` to `%s`.", name, value)
-        row = self.make_option_row(name, value)
+        option_row = self.make_option_row(name, value)
         try:
             self.cursor.execute("""
                 insert into options (integer_value, real_value, text_value, blob_value, name)
                 values (?, ?, ?, ?, ?)
-            """, row)
+            """, option_row)
         except sqlite3.IntegrityError:
             self.cursor.execute("""
                 update options
                 set integer_value = ?, real_value = ?, text_value = ?, blob_value = ? where name = ?
-            """, row)
+            """, option_row)
 
     def make_option_row(self, name, value):
         "Gets option row by value."
         return (as_(value, int), as_(value, float), as_(value, str), as_(value, bytes), name)
 
-    def get_option(self, name, default_value=None):
+    def get_option(self, name):
         "Gets option value."
         self.cursor.execute("""
             select coalesce(integer_value, real_value, text_value, blob_value)
@@ -102,7 +97,7 @@ class CursorWrapper:
             where name = ?
         """, (name, ))
         row = self.cursor.fetchone()
-        return row[0] if row else default_value
+        return row[0]
 
     def insert_post(self, post):
         "Insert new post."
@@ -260,7 +255,7 @@ class BlogBuilder:
         "Build blog."
 
         self.initialize_index()
-        self.page_size = self.cursor.get_option("blog.page_size", 10)
+        self.page_size = self.cursor.get_option("blog.page_size")
         self.build_index(self.index, self.path)
         self.build_posts()
 
