@@ -430,8 +430,12 @@ def options():
 # ------------------------------------------------------------------------------
 
 @click.command("get", short_help="Get option.")
-def get_option():
-    pass
+@CommonArguments.existing_database
+@click.argument("name")
+def get_option(database, name):
+    "Gets option value."
+    with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
+        print(format_option_value(cursor.get_option(name)))
 
 
 # Set option command.
@@ -452,6 +456,7 @@ def set_option(database, name, integer_value, real_value, text_value, blob_value
     \b
     Examples:
     \b
+        lje.py option set myblog.db blog.favicon.png --binary favicon.png
         lje.py option set myblog.db blog.page_size --integer 5
         lje.py option set myblog.db blog.url --string http://example.org
     """
