@@ -284,7 +284,7 @@ class BlogBuilder:
             self.build_index(child, path / str(segment))
 
     def build_index_page(self, path, posts):
-        logging.info("Building index page `%s`…", path)
+        logging.info("Building index page `%s`: %d posts…", path, len(posts))
         self.render(path, "index.html", posts=posts)
 
     def build_posts(self):
@@ -309,7 +309,8 @@ class BlogBuilder:
         "Renders template to the specified path."
         if not path.parent.exists():
             path.parent.mkdir(parents=True)
-        body = self.env.get_template(template_name).render(self.context)
+        body = self.env.get_template(template_name).render(
+            dict(self.context, **context))
         with open(str(path), "wt", encoding="utf-8") as fp:
             fp.write(body)
 
