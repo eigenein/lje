@@ -239,6 +239,11 @@ def build(database, path):
 class BlogBuilder:
     "Builds blog."
 
+     # TODO: /blog/my-first-post/index.html
+     # TODO: /posts/2014/index.html
+     # TODO: /posts/2014/08/index.html
+     # TODO: /posts/tags/octocat/index.html
+
     def __init__(self, cursor, path):
         self.cursor = cursor
         self.path = path
