@@ -1,5 +1,7 @@
 language: python
 python: "3.4"
-install: "pip install -r requirements.txt"
+install:
+  - "pip install -r requirements.txt"
+  - "pip install pep8 pyflakes"
 script:
   - "pep8 --ignore E501,E702 lje.py"
