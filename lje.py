@@ -249,16 +249,22 @@ class BlogBuilder:
     def build(self):
         "Builds entire blog."
         self.page_size = self.cursor.get_option("blog.page_size", 10)
-        self.build_index()
+        posts = self.cursor.get_posts()
+
+        self.build_index(posts)
+
+        for post in posts:
+            self.build_post(post)
 
     def build_post(self, post):
         "Builds single post page."
+        post_path = self.path / "blog" / post.key / "index.html"
+        logging.info("Building post `%s`…", post_path)
         pass  # TODO: build post page
 
-    def build_index(self):
+    def build_index(self, posts):
         "Builds index pages."
 
-        posts = self.cursor.get_posts()
         by_year, by_year_month = self.group_posts(posts)
 
         # TODO: refactor this to build in a general way… I don't know how to do this at the moment…
@@ -305,6 +311,7 @@ class BlogBuilder:
         for page, posts in enumerate(pages, 1):
             page_path = path if page == 1 else path / str(page)
             page_path = page_path / "index.html"
+
             logging.info("Building `%s`: %d posts…", page_path, len(posts))
             pass  # TODO: build index page
 
