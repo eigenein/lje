@@ -236,9 +236,6 @@ def build(database, path):
         BlogBuilder(cursor, path).build()
 
 
-BlogIndex = collections.namedtuple("BlogIndex", ["posts", "by_date"])
-
-
 class BlogBuilder:
     "Builds blog."
 
