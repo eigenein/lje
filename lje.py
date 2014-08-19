@@ -433,7 +433,14 @@ def options():
 @CommonArguments.existing_database
 @click.argument("name")
 def get_option(database, name):
-    "Gets option value."
+    """
+    Gets option value.
+
+    \b
+    Example:
+    \b
+        lje.py option get myblog.db blog.page_size
+    """
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         print(format_option_value(cursor.get_option(name)))
 
