@@ -19,6 +19,9 @@
     </header>
     <div class="body-inner">
       {% block body %}{% endblock %}
+      <footer>
+        <a href="mailto:{{ options.author_email }}">{{ options.author_name }}</a> &copy; 2014
+      </footer>
     </div>
     <script type="text/javascript" src="//yandex.st/share/share.js" charset="utf-8"></script>
   </body>
