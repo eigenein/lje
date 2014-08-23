@@ -1,4 +1,5 @@
 {% extends "base.html" %}
 
-{% block body %}
-{% endblock %}
+{% block title_prefix %}{{ post.title }} — {% endblock %}
+
+{% block body %}{% include "post_article.html" %}{% endblock %}
