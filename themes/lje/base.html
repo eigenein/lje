@@ -13,10 +13,13 @@
   </head>
   <body>
     <header class="navbar">
-      <h1><a href="{{ options.blog_url }}">{{ options.blog_title }}</a></h1>
+      <div class="navbar-inner">
+        <h1><a class="link" href="{{ options.blog_url }}">{{ options.blog_title }}</a></h1>
+      </div>
     </header>
     <div class="body-inner">
       {% block body %}{% endblock %}
     </div>
+    <script type="text/javascript" src="//yandex.st/share/share.js" charset="utf-8"></script>
   </body>
 </html>

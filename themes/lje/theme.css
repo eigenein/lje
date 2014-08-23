@@ -54,72 +54,8 @@ table {
 
 body {
     font: 16px/20px "PT Sans", sans-serif;
-    color: #333;
-}
-
-h1, h2, h3 {
-    color: #333;
-}
-
-h2 {
-    font-size: 24px;
-    margin: 32px 0 16px 0;
-    font-weight: bold;
-}
-
-a {
-    text-decoration: none;
-}
-
-h2 a {
-    color: #333;
-    font-weight: bold;
-}
-
-h2 a:hover {
-    color: black;
-}
-
-code {
-    font-family: "PT Mono", "Consolas", "Lucida Console", monospace;
-    background: #fafafa;
-    padding: 0 4px;
-}
-
-pre {
-    font-size: 14px;
-    line-height: 24px;
-    margin: 16px 0;
-    background: #fafafa;
-    padding: 8px;
-}
-
-pre code {
-    padding: 0;
-}
-
-h3 {
-    font-size: 18px;
-    font-weight: bold;
-    margin: 16px 0 8px 0;
-}
-
-body {
-    padding-top: 48px;
-}
-
-p a {
-    color: #333;
-    border-bottom: 1px dashed black;
-}
-
-p a:hover {
-    color: #d00;
-}
-
-.body-inner {
-    margin: 0 auto;
-    width: 960px;
+    background: #f6f5f3;
+    padding-top: 80px;
 }
 
 .navbar {
@@ -127,23 +63,118 @@ p a:hover {
     top: 0;
     left: 0;
     right: 0;
-    height: 48px;
     z-index: 1000;
-    background: #fafafa;
-    border-bottom: 1px solid #ccc;
-    padding: 0 24px;
+    background: white;
+    border-bottom: 1px solid #dedede;
 }
 
-.navbar h1 {
+.navbar-inner, .body-inner {
+    margin: 0 auto;
+}
+
+.body-inner {
+    width: 800px;
+}
+
+.navbar-inner {
+    padding: 16px 0;
+    width: 1000px;
+}
+
+a {
+    text-decoration: none;
+}
+
+.navbar a {
     font-size: 24px;
-    line-height: 48px;
-    display: inline-block;
-}
-
-.navbar h1 a {
-    color: #333;
-}
-
-.navbar h1 a:hover {
     color: black;
+}
+
+.navbar a:hover {
+    color: #dd0000;
+}
+
+article {
+    background: #f6f5f3;
+    margin-bottom: 37px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, .1), 0 3px 4px -3px rgba(0, 0, 0, .3);
+    color: #525050;
+}
+
+article .body {
+    padding: 13px 64px 25px;
+    border-bottom: 1px solid #dedede;
+    background: white;
+}
+
+article h2 {
+    margin: 16px 0;
+    font-size: 32px;
+    line-height: 36px;
+}
+
+article h2 a {
+    color: #525050;
+}
+
+article p {
+    font-size: 15px;
+    margin: 15px 0;
+}
+
+article h3 {
+    font-weight: bold;
+    margin: 15px 0;
+    line-height: 1.3;
+}
+
+p a {
+    color: #0f6fb3;
+}
+
+p a:hover {
+    color: red;
+}
+
+code {
+    background: #fafafa;
+    font-family: "PT Mono", monospace;
+}
+
+pre {
+    background: #fafafa;
+    padding: 15px;
+    font-size: 15px;
+    overflow-x: scroll;
+}
+
+article footer {
+    line-height: 64px;
+    text-align: center;
+}
+
+.date, .tag {
+    color: #888;
+    font-size: 13px;
+}
+
+.date:hover, .tag:hover {
+    color: red;
+}
+
+.reference::after {
+    clear: both;
+    display: block;
+    height: 0;
+    content: '';
+}
+
+.tags {
+    float: right;
+    text-align: right;
+}
+
+.tag {
+    background: #fafafa;
+    padding: 0 5px;
 }
