@@ -162,7 +162,7 @@ article footer {
 body footer {
     font-size: 13px;
     color: #888;
-    line-height: 64px;
+    margin-bottom: 37px;
 }
 
 body footer a {
@@ -193,4 +193,27 @@ body footer a {
 .tag {
     background: #fafafa;
     padding: 0 5px;
+}
+
+.pager {
+    margin-bottom: 37px;
+    text-align: center;
+}
+
+.pager a, .pager span {
+    padding: 5px 10px;
+    color: #333;
+    background: white;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, .2);
+}
+
+.pager a:hover {
+    border-color: rgba(0, 0, 0, .35);
+}
+
+.pager li {
+    display: inline-block;
+    line-height: 32px;
+    margin: 0 5px;
 }

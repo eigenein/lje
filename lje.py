@@ -278,14 +278,14 @@ class BlogBuilder:
         pages = paginate(entry.posts, self.page_size)
         for page, posts in enumerate(pages, 1):
             page_path = path / str(page) if page != 1 else path
-            self.build_index_page(page_path / "index.html", posts)
+            self.build_index_page(page, page_path / "index.html", posts)
         # Recursively build child index pages.
         for segment, child in entry.children.items():
             self.build_index(child, path / str(segment))
 
-    def build_index_page(self, path, posts):
+    def build_index_page(self, page, path, posts):
         logging.info("Building index page `%s`: %d posts…", path, len(posts))
-        self.render(path, "index.html", posts=posts)
+        self.render(path, "index.html", current_page=page, posts=posts)
 
     def build_posts(self):
         "Builds single post pages."
