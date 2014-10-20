@@ -62,6 +62,10 @@ class CursorWrapper:
         self.cursor.execute("""create table posts (
             key text not null primary key, timestamp integer not null, title text null, text text not null)""")
         self.cursor.execute("create index ix_posts_timestamp on posts (timestamp)")
+        self.cursor.execute("create table tags (tag text not null, parent_tag text not null)")
+        self.cursor.execute("create index ix_tags_tag on tags (tag)")
+        self.cursor.execute("create table post_tags (key text not null, tag text not null)")
+        self.cursor.execute("create index ix_post_tags_key on post_tags (key)")
         # Insert default option values.
         self.upsert_option("author.email", None)
         self.upsert_option("author.name", None)
@@ -541,7 +545,7 @@ def import_tumblr(database, hostname):
     """
 
     session = requests.Session()
-    imported_posts = 0
+    statistics = collections.Counter()
 
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         cursor.initialize_database()
@@ -553,15 +557,22 @@ def import_tumblr(database, hostname):
         cursor.upsert_option("blog.url", response["blog"]["url"])
 
         for offset in itertools.count(0, 20):
-            response = tumblr_get(session, "posts/text", hostname, filter="raw", offset=offset, limit=20)
+            response = tumblr_get(session, "posts", hostname, filter="raw", offset=offset, limit=20)
             if offset >= response["total_posts"]:
                 break
             for post in response["posts"]:
-                cursor.upsert_post(Post(post["slug"], post["timestamp"], post["title"], post["body"]))
-                imported_posts += 1
-                logging.info("Imported: %s.", post["slug"])
+                statistics[post["type"]] += 1
+                if post["type"] == "text":
+                    cursor.upsert_post(Post(post["slug"], post["timestamp"], post["title"], post["body"]))
+                    statistics["imported"] += 1
+                    logging.info("Imported: %s.", post["slug"])
+                else:
+                    statistics["skipped"] += 1
+                    logging.warning("Skipped: %s.", post["slug"])
 
-    logging.info("Imported posts: %d.", imported_posts)
+    logging.info("Import finished.")
+    logging.info("Imported: %d (text: %d).", statistics["imported"], statistics["text"])
+    logging.info("Skipped: %d.", statistics["skipped"])
 
 
 def tumblr_get(session, method, hostname, **params):
