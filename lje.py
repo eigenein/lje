@@ -70,7 +70,7 @@ class CursorWrapper:
         self.upsert_option("blog.favicon.ico", None)
         self.upsert_option("blog.favicon.png", None)
         self.upsert_option("blog.page_size", 10)
-        self.upsert_option("blog.theme", "lje")
+        self.upsert_option("blog.theme", "eigenein")
         self.upsert_option("blog.title", None)
         self.upsert_option("blog.url", None)
 
@@ -366,13 +366,15 @@ class Index:
 @click.option("--email", help="Your email.", metavar="<email>", prompt=True, required=True)
 @click.option("--title", help="Blog title.", metavar="<title>", prompt=True, required=True)
 @click.option("--url", help="Blog URL.", metavar="<url>", prompt=True, required=True)
-def init(database, name, email, title, url):
+@click.option("--theme", default="eigenein", help="Theme.", metavar="<theme>", prompt=True)
+def init(database, name, email, title, url, theme):
     with ConnectionWrapper(database) as connection, connection.cursor() as cursor:
         cursor.initialize_database()
         cursor.upsert_option("author.email", email)
         cursor.upsert_option("author.name", name)
         cursor.upsert_option("blog.title", title)
         cursor.upsert_option("blog.url", url)
+        cursor.upsert_option("blog.theme", theme)
 
 
 # Compose command.
