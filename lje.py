@@ -39,7 +39,6 @@ class ConnectionWrapper:
 
     def cursor(self):
         "Gets database cursor wrapper."
-
         return CursorWrapper(self.connection.cursor())
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -60,7 +59,6 @@ class CursorWrapper:
 
         self.cursor.execute("""create table options (
             name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob)""")
-        # TODO: draft, type
         self.cursor.execute("""create table posts (
             key text not null primary key, timestamp integer not null, title text null, text text not null)""")
         self.cursor.execute("create index ix_posts_timestamp on posts (timestamp)")
@@ -73,6 +71,7 @@ class CursorWrapper:
         self.upsert_option("blog.theme", "eigenein")
         self.upsert_option("blog.title", None)
         self.upsert_option("blog.url", None)
+        self.upsert_option("schema.version", 1)
 
     def upsert_option(self, name, value):
         "Inserts or updates option."
