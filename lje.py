@@ -302,20 +302,20 @@ class BlogBuilder:
         for post in posts:
             self.index.append(post)
 
-    def build_index(self, entry, path):
+    def build_index(self, entry, path, segments=()):
         logging.info("Building index pages in `%s`…", path)
         # Build pages at the current level.
         pages = paginate(entry.posts, self.page_size)
         for page, posts in enumerate(pages, 1):
             page_path = path / str(page) if page != 1 else path
-            self.build_index_page(page, page == len(pages), page_path / "index.html", posts)
+            self.build_index_page(page, page == len(pages), page_path / "index.html", segments, posts)
         # Recursively build child index pages.
         for segment, child in entry.children.items():
-            self.build_index(child, path / str(segment))
+            self.build_index(child, path / str(segment), segments + (segment, ))
 
-    def build_index_page(self, page, is_last, path, posts):
+    def build_index_page(self, page, is_last, path, segments, posts):
         logging.info("Building index page `%s`: %d posts…", path, len(posts))
-        self.render(path, "index.html", current_page=page, is_last_page=is_last, posts=posts)
+        self.render(path, "index.html", current_page=page, is_last_page=is_last, posts=posts, segments=segments)
 
     def build_posts(self):
         "Builds single post pages."
@@ -339,6 +339,7 @@ class BlogBuilder:
         self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(self.theme_path)))
         self.env.filters.update({
             "markdown": self.markdown,
+            "joinsegments": lambda segments: "".join(map("/{0}".format, segments)),
             "tags": self.cursor.get_post_tags,
             "timestamp": datetime.datetime.utcfromtimestamp,
         })
@@ -391,11 +392,11 @@ class Index:
 
     def get_keys(self, post):
         timestamp = datetime.datetime.utcfromtimestamp(post.timestamp)
-        yield []
-        yield [timestamp.strftime("%Y")]
-        yield [timestamp.strftime("%Y"), timestamp.strftime("%m")]
+        yield ()
+        yield (timestamp.strftime("%Y"), )
+        yield (timestamp.strftime("%Y"), timestamp.strftime("%m"))
         for tag in self.cursor.get_post_tags(post.key):
-            yield [tag]
+            yield (tag, )
 
 
 # Init command.

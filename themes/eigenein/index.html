@@ -4,9 +4,9 @@
 {% for post in posts %}{% include "post_article.html" %}{% endfor %}
 <ul class="pager">
   {% for page in range(1, current_page) %}<!--
-  --><li><a href="{{ options.blog_url }}{% if page != 1 %}/{{ page }}{% endif %}">{{ page }}</a></li><!--
+  --><li><a href="{{ options.blog_url }}{{ segments|joinsegments }}{% if page != 1 %}/{{ page }}{% endif %}">{{ page }}</a></li><!--
   -->{% endfor %}<!--
   --><li><span>{{ current_page }}</span></li><!--
-  -->{% if not is_last_page %}<li><a href="{{ options.blog_url }}/{{ current_page + 1 }}">→</a></li>{% endif %}
+  -->{% if not is_last_page %}<li><a href="{{ options.blog_url }}{{ segments|joinsegments }}/{{ current_page + 1 }}">→</a></li>{% endif %}
 </ul>
 {% endblock %}
