@@ -3,7 +3,11 @@
     <h2><a href="{{ options.blog_url }}/{{ post.key }}">{{ post.title }}</a></h2>
     <div class="reference">
       <a class="date" href="{{ options.blog_url }}/{{ post.key }}">{{ (post.timestamp|timestamp).strftime("%d %b, %H:%M") }}</a>
-      <span class="tags"><a class="tag" href="#">tag-1</a> <a class="tag" href="#">tag-2</a></span>
+      <span class="tags">
+        {% for tag in post.key|tags %}
+        <a class="tag" href="{{ options.blog_url }}/{{ tag }}">{{ tag }}</a>
+        {% endfor %}
+      </span>
     </div>
     {{ post.text|markdown }}
   </div>

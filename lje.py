@@ -8,6 +8,7 @@ import contextlib
 import datetime
 import itertools
 import logging
+import operator
 import os
 import pathlib
 import shutil
@@ -156,6 +157,11 @@ class CursorWrapper:
         "Adds tag to the post."
         self.cursor.execute("insert into post_tags values (?, ?)", (key, tag))
 
+    def get_post_tags(self, key):
+        "Gets tags assigned to the post."
+        self.cursor.execute("select tag from post_tags where key = ? order by tag", (key, ))
+        return map(operator.itemgetter(0), self.cursor.fetchall())
+
     def __exit__(self, exc_type, exc_value, traceback):
         if not exc_type:
             self.cursor.connection.commit()
@@ -291,7 +297,7 @@ class BlogBuilder:
 
     def initialize_index(self):
         logging.info("Initializing index…")
-        self.index = Index()
+        self.index = Index(self.cursor)
         posts = self.cursor.get_posts()
         for post in posts:
             self.index.append(post)
@@ -331,8 +337,11 @@ class BlogBuilder:
 
     def make_template_environment(self):
         self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(self.theme_path)))
-        self.env.filters["markdown"] = self.markdown
-        self.env.filters["timestamp"] = datetime.datetime.utcfromtimestamp
+        self.env.filters.update({
+            "markdown": self.markdown,
+            "tags": self.cursor.get_post_tags,
+            "timestamp": datetime.datetime.utcfromtimestamp,
+        })
 
     def markdown(self, text):
         "Renders markdown using CommonMark."
@@ -367,9 +376,10 @@ class BlogBuilder:
 class Index:
     "Pages index."
 
-    def __init__(self):
+    def __init__(self, cursor):
+        self.cursor = cursor
         self.posts = []
-        self.children = collections.defaultdict(Index)
+        self.children = collections.defaultdict(lambda: Index(cursor))
 
     def append(self, post):
         "Appends post to index."
@@ -381,9 +391,11 @@ class Index:
 
     def get_keys(self, post):
         timestamp = datetime.datetime.utcfromtimestamp(post.timestamp)
+        yield []
         yield [timestamp.strftime("%Y")]
         yield [timestamp.strftime("%Y"), timestamp.strftime("%m")]
-        yield []
+        for tag in self.cursor.get_post_tags(post.key):
+            yield [tag]
 
 
 # Init command.
