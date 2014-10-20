@@ -315,7 +315,8 @@ class BlogBuilder:
 
     def markdown(self, text):
         "Renders markdown using CommonMark."
-        return self.common_mark_renderer.render(self.common_mark_parser.parse(text))
+        ast = self.common_mark_parser.parse(text)
+        return self.common_mark_renderer.render(ast)
 
     def render(self, path, template_name, **context):
         "Renders template to the specified path."
