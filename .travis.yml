@@ -6,6 +6,6 @@ install:
 before_script:
   - "pep8 --ignore E501,E702 lje.py"
 script:
-  - "python lje.py init --name Name --email name@example.org --title Title --url http://example.org new.db"
+  - "python lje.py init --name Name --email name@example.org --title Title --url http://example.org new.db --theme eigenein"
   - "python lje.py import tumblr imported.db eigenein.tumblr.com"
   - "python lje.py build imported.db build"
