@@ -15,8 +15,8 @@ import sqlite3
 import tempfile
 
 import click
+import CommonMark
 import jinja2
-import markdown
 import requests
 
 __version__ = "0.1a"
@@ -249,6 +249,9 @@ def build(database, path):
 class BlogBuilder:
     "Builds blog."
 
+    common_mark_parser = CommonMark.DocParser()
+    common_mark_renderer = CommonMark.HTMLRenderer()
+
     def __init__(self, cursor, path):
         self.cursor = cursor
         self.path = path
@@ -307,8 +310,12 @@ class BlogBuilder:
 
     def make_template_environment(self):
         self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(self.theme_path)))
-        self.env.filters["markdown"] = markdown.markdown
+        self.env.filters["markdown"] = self.markdown
         self.env.filters["timestamp"] = datetime.datetime.utcfromtimestamp
+
+    def markdown(self, text):
+        "Renders markdown using CommonMark."
+        return self.common_mark_renderer.render(self.common_mark_parser.parse(text))
 
     def render(self, path, template_name, **context):
         "Renders template to the specified path."
