@@ -3,18 +3,10 @@
 {% block body %}
 {% for post in posts %}{% include "post_article.html" %}{% endfor %}
 <ul class="pager">
-  {% for page in range(1, current_page) %}<li><a href="{{ options.blog_url }}{% if page != 1 %}/{{ page }}{% endif %}">{{ page }}</a></li>{% endfor %}<!--
+  {% for page in range(1, current_page) %}<!--
+  --><li><a href="{{ options.blog_url }}{% if page != 1 %}/{{ page }}{% endif %}">{{ page }}</a></li><!--
+  -->{% endfor %}<!--
   --><li><span>{{ current_page }}</span></li><!--
-  --><li><a href="{{ options.blog_url }}/{{ current_page + 1 }}">→</a></li>
+  -->{% if not is_last_page %}<li><a href="{{ options.blog_url }}/{{ current_page + 1 }}">→</a></li>{% endif %}
 </ul>
 {% endblock %}
-
-{# TODO: BUG: do not show arrow on the last page #}
-{# TODO: BUG: make paging work with different paths (like /tags/2) #}
-{# TODO: FEAT: implement tags #}
-{# TODO: FEAT: google analytics settings and tracker code #}
-{# TODO: FEAT: yandex.metrika settings and tracker code #}
-{# TODO: FEAT: disqus #}
-{# TODO: FEAT: different post types (e.g. images) #}
-{# TODO: FEAT: side navigation panel #}
-{# TODO: FEAT: code highlighting #}

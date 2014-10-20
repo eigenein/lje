@@ -263,7 +263,7 @@ class BlogBuilder:
         self.page_size = self.cursor.get_option("blog.page_size")
         self.theme_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
         self.make_template_environment()
-        self.context = self.make_context()
+        self.make_context()
         self.build_index(self.index, self.path)
         self.build_posts()
         self.copy_static_files()
@@ -281,14 +281,14 @@ class BlogBuilder:
         pages = paginate(entry.posts, self.page_size)
         for page, posts in enumerate(pages, 1):
             page_path = path / str(page) if page != 1 else path
-            self.build_index_page(page, page_path / "index.html", posts)
+            self.build_index_page(page, page == len(pages), page_path / "index.html", posts)
         # Recursively build child index pages.
         for segment, child in entry.children.items():
             self.build_index(child, path / str(segment))
 
-    def build_index_page(self, page, path, posts):
+    def build_index_page(self, page, is_last, path, posts):
         logging.info("Building index page `%s`: %d posts…", path, len(posts))
-        self.render(path, "index.html", current_page=page, posts=posts)
+        self.render(path, "index.html", current_page=page, is_last_page=is_last, posts=posts)
 
     def build_posts(self):
         "Builds single post pages."
@@ -306,7 +306,7 @@ class BlogBuilder:
         options = self.cursor.get_options()
         for key, value in list(options.items()):
             options[key.replace(".", "_")] = value
-        return {"index": self.index, "options": options}
+        self.context = {"index": self.index, "options": options}
 
     def make_template_environment(self):
         self.env = jinja2.Environment(loader=jinja2.PackageLoader("lje", str(self.theme_path)))
