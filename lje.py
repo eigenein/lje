@@ -58,13 +58,27 @@ class CursorWrapper:
         "Initializes empty database."
 
         self.cursor.execute("""create table options (
-            name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob)""")
+            name text not null primary key, integer_value integer, real_value real, text_value text, blob_value blob
+        )""")
         self.cursor.execute("""create table posts (
-            key text not null primary key, timestamp integer not null, title text null, text text not null)""")
-        self.cursor.execute("create index ix_posts_timestamp on posts (timestamp)")
-        self.cursor.execute("create table tags (tag text not null, parent_tag text not null)")
-        self.cursor.execute("create index ix_tags_tag on tags (tag)")
-        self.cursor.execute("create table post_tags (key text not null, tag text not null)")
+            key text not null primary key, timestamp integer not null, title text null, text text not null
+        )""")
+        self.cursor.execute("""
+            create index ix_posts_timestamp on posts (timestamp)
+        """)
+        self.cursor.execute("""create table tags (
+            tag text not null, parent_tag text not null,
+            foreign key(parent_tag) references tags(tag),
+            unique(tag, parent_tag)
+        )""")
+        self.cursor.execute("""
+            create index ix_tags_tag on tags (tag)
+        """)
+        self.cursor.execute("""create table post_tags (
+            key text not null, tag text not null,
+            foreign key(key) references posts(key),
+            unique(key, tag)
+        )""")
         self.cursor.execute("create index ix_post_tags_key on post_tags (key)")
         # Insert default option values.
         self.upsert_option("author.email", None)
@@ -137,6 +151,10 @@ class CursorWrapper:
             order by timestamp desc
         """)
         return [Post(*row) for row in self.cursor.fetchall()]
+
+    def insert_post_tag(self, key, tag):
+        "Adds tag to the post."
+        self.cursor.execute("insert into post_tags values (?, ?)", (key, tag))
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not exc_type:
@@ -561,14 +579,18 @@ def import_tumblr(database, hostname):
             if offset >= response["total_posts"]:
                 break
             for post in response["posts"]:
-                statistics[post["type"]] += 1
-                if post["type"] == "text":
+                post_type = post["type"]
+                statistics[post_type] += 1
+                if post_type not in ("text", ):  # TODO
+                    statistics["skipped"] += 1
+                    logging.warning("Skipped: %s.", post["slug"])
+                    continue
+                if post_type == "text":
                     cursor.upsert_post(Post(post["slug"], post["timestamp"], post["title"], post["body"]))
                     statistics["imported"] += 1
                     logging.info("Imported: %s.", post["slug"])
-                else:
-                    statistics["skipped"] += 1
-                    logging.warning("Skipped: %s.", post["slug"])
+                for tag in post["tags"]:
+                    cursor.insert_post_tag(post["slug"], tag)
 
     logging.info("Import finished.")
     logging.info("Imported: %d (text: %d).", statistics["imported"], statistics["text"])
