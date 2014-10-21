@@ -294,7 +294,7 @@ class BlogBuilder:
 
         self.initialize_index()
         self.page_size = self.cursor.get_option("blog.page_size")
-        self.theme_path = pathlib.Path("themes") / self.cursor.get_option("blog.theme")
+        self.theme_path = pathlib.Path(__file__).parent / "themes" / self.cursor.get_option("blog.theme")
         self.make_template_environment()
         self.make_context()
         self.build_index(self.index, self.path)
