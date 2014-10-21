@@ -273,6 +273,12 @@ def build(database, path):
         BlogBuilder(cursor, pathlib.Path(path)).build()
 
 
+class BlogChecker:
+    "Checks blog options."
+
+    pass  # TODO: https://github.com/eigenein/lje/issues/17
+
+
 class BlogBuilder:
     "Builds blog."
 
